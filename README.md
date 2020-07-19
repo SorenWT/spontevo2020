@@ -1,6 +1,6 @@
 This repository contains code required to reproduce the analyses in Wainio-Theberge et al. (2020): Bridging the gap – Spontaneous fluctuations shape stimulus-evoked spectral power.
 
-To use the functions in this repository, the repository must be added to the MATLAB path with all subfolders. For MEG data, Fieldtrip must also be installed and set up; for EEG data, both EEGLAB and Fieldtrip are required. To do the preprocessing, MNE-Python must also be installed, as well as the Human Connectome Project's megconnectome software. 
+To use the functions in this repository, the repository must be added to the MATLAB path with all subfolders. For MEG data, Fieldtrip must also be installed and set up; for EEG data, both EEGLAB and Fieldtrip are required. To do the preprocessing, MNE-Python must also be installed, as well as the Human Connectome Project's megconnectome software. You will also need to install the AutoReject package (https://github.com/autoreject/autoreject).
 
 ## Preprocessing
 The preprocessing functions for the CamCAN dataset are camcan_preproc.m and camcan_preproc_1Hz.m. For each one, the only inputs you need are the CamCAN subid (CCxxxxxx) and the file name ('some/directory/transdef_transrest_mf2pt2_task_raw.fif). The CC IDs of all subjects used in the study are provided in CCids.txt and CCids_IRASA.txt, so you can loop through those to do the preprocessing. 
