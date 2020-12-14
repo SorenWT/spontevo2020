@@ -59,7 +59,11 @@ if ~exist(fullfile(settings.outputdir,[settings.datasetname '_allmeas.mat']),'fi
                 dimn(end) = [];
             end
             dimn = length(dimn);
+	    if(~strcmpi(fields{c},'ersp.poststimindx') && ~strcmpi(fields{c},'ersp.prestimpow'))
             tmp = cat(dimn+1,alldata{q,c,:});
+	    else
+	    tmp = squeeze(alldata(q,c,:));
+            end
             allmeas{q} = assignfield_nest(allmeas{q},fields{c},tmp);
         end
     end
@@ -109,7 +113,7 @@ if ~strcmpi(settings.datatype,'ECoG') || strcmpi(settings.ecog.method,'roi')
     erp_ttv_stats = cell(1,nerp);
     
     opts = struct;
-    opts.nrand = 1000;
+    opts.nrand = 10000;
     
     if strcmpi(settings.datatype,'ECoG')
         opts.minnbchan = 0;
