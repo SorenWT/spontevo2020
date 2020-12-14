@@ -76,41 +76,60 @@ if settings.pool > 1
                         data = ft_resampledata(cfg,data);
                     end
                     
-                    %                if isfield(settings.tfparams,'condition') && ~strcmpi(settings.tfparams.condition,'all')
-                    %                    cfg = []; cfg.trials = find(ismember(data.trialinfo(:,1),settings.tfparams.condition));
-                    %                    data = ft_selectdata(cfg,data);
-                    %                end
+                    % load in continuous data and events
                     
-                    data_allrange = (settings.pseudo.prestim(1)-ceil(settings.srate/5)):(settings.real.poststim(end));
-                    cfg = []; cfg.method = 'wavelet'; cfg.output = 'fourier'; cfg.foi = exp(linspace(log(freqs{2}(1)),log(freqs{end}(2)),50));
-                    cfg.keeptrials = 'yes'; cfg.toi = data.time{1}(data_allrange); cfg.width = 3;
-                    freqdata = ft_freqanalysis(cfg,data);
-                    foi{i} = freqdata.freq;
+                    event = parload([extractBefore(files(i).name,'_') '_event.mat'],'event');
+                    types = extractfield(event,'type');
+                    tpoints = extractfield(event,'sample');
+                    latencies = tpoints(find(strcmpi(types,'Trigger')));
+                    allvalues = extractfield(event,'value');
+                    values = allvalues(find(strcmpi(types,'Trigger')));
+                    latencies(find(values < 0)) = [];
+                    latencies = round(latencies/2);
+                    itis = diff([latencies(1) latencies]); % don't keep the first trial since you don't know how long the first ITI really was
+                    goodevents = find(itis >=3000); % keep trials where the preceeding iti was 6 seconds or longer
                     
                     timefreq_data{1} = data;
-                    for c = 1:length(timefreq_data{1}.trial)
-                        timefreq_data{1}.trial{c} = timefreq_data{1}.trial{c}(:,data_allrange);
-                    end
-                    
-                    for c = 1:length(foi{i})
-                        for cc = 1:length(data.trial)
-                            timefreq_data{c+1}.trial{cc} = squeeze(freqdata.fourierspctrm(cc,:,1,:));
+                    for q = 1:length(goodevents)
+                        maxltrial = length(settings.pseudo.prestim)+length(settings.pseudo.poststim);
+                        pseudostart = randsample((latencies(goodevents(q)-1)+2000):(latencies(goodevents(q))-2000-maxltrial-ceil(settings.srate/5)),1);
+                        pseudoindx = pseudostart:(pseudostart+maxltrial);
+                        realindx = (latencies(goodevents(q))-length(settings.real.prestim)):(latencies(goodevents(q))+length(settings.real.poststim));
+                        
+                        data_allrange = [pseudoindx realindx];
+                        %data_allrange = (settings.pseudo.prestim(1)-ceil(settings.srate/5)):(settings.real.poststim(end));
+                        
+                        cfg = []; cfg.method = 'wavelet'; cfg.output = 'fourier'; cfg.foi = exp(linspace(log(freqs{2}(1)),log(freqs{end}(2)),50));
+                        cfg.keeptrials = 'yes'; cfg.toi = data.time{1}(data_allrange); cfg.width = 3;
+                        freqdata = ft_freqanalysis(cfg,data);
+                        
+                        if length(size(freqdata.fourierspctrm)) < 4
+                            freqdata.fourierspctrm = permute(freqdata.fourierspctrm,[4 1 2 3]); % put it in the old format so I don't have to change so much code
                         end
-                        timefreq_data{c+1}.time = freqdata.time;
-                        timefreq_data{c+1}.label = data.label;
-                        for cc = 1:length(freqs)
-                            if ~isempty(freqs{cc}) && foi{i}(c) >= freqs{cc}(1) && foi{i}(c) <= freqs{cc}(2)
-                                timefreq_data{c+1}.parent = cc;
+                        
+                        foi{i} = freqdata.freq;
+                        
+                        timefreq_data{1}.trial{q} = data.trial{1}(:,data_allrange);
+                        timefreq_data{1}.time{q} = freqdata.time;
+                        
+                        for c = 1:length(foi{i})
+                            timefreq_data{c+1}.trial{q} = squeeze(freqdata.fourierspctrm(1,:,c,:));
+                            timefreq_data{c+1}.time{q} = freqdata.time;
+                            timefreq_data{c+1}.label = data.label;
+                            for cc = 1:length(freqs)
+                                if ~isempty(freqs{cc}) && foi{i}(c) >= freqs{cc}(1) && foi{i}(c) <= freqs{cc}(2)
+                                    timefreq_data{c+1}.parent = cc;
+                                end
                             end
-                        end
-                        if ~isfield(timefreq_data{c+1},'parent')
-                            if freqs{2}(1) > foi{i}(c)
-                                timefreq_data{c+1}.parent = 2;
-                            elseif freqs{end}(2) < foi{i}(c)
-                                timefreq_data{c+1}.parent = length(freqs);
+                            if ~isfield(timefreq_data{c+1},'parent')
+                                if freqs{2}(1) > foi{i}(c)
+                                    timefreq_data{c+1}.parent = 2;
+                                elseif freqs{end}(2) < foi{i}(c)
+                                    timefreq_data{c+1}.parent = length(freqs);
+                                end
                             end
+                            %freqdata.fourierspctrm(:,:,1,:) = []; %remove bits of the matrix each time to save memory
                         end
-                        freqdata.fourierspctrm(:,:,1,:) = []; %remove bits of the matrix each time to save memory
                     end
                     freqdata = [];
                 case 'fft'
@@ -176,7 +195,7 @@ if settings.pool > 1
                         
                         cfg = []; cfg.resamplefs = settings.srate; cfg.detrend = 'no';
                         newdata = ft_resampledata(cfg,data);
-
+                        
                         cfg = []; cfg.latency = [min(freqdata.time) max(freqdata.time)];
                         newdata = ft_selectdata(cfg,newdata);
                         
@@ -194,7 +213,7 @@ if settings.pool > 1
                         Calc_naddPLE(settings,freqdata,files(i).name)
                     end
                     
-                   % freqdata.fourierspctrm = freqdata.fourierspctrm + 0.001*min(min(min(min(freqdata.fourierspctrm))))*j; % add a tiny imaginary component for compatibility
+                    % freqdata.fourierspctrm = freqdata.fourierspctrm + 0.001*min(min(min(min(freqdata.fourierspctrm))))*j; % add a tiny imaginary component for compatibility
                     
                     timefreq_data{1} = newdata;
                     for c = 1:length(timefreq_data{1}.trial)
@@ -402,9 +421,9 @@ else
                     cfg.foi = freqdata.freq;
                     
                     freqdata.fourierspctrm = permute(freqdata.fourierspctrm,[1 3 2 4]);
-                   
                     
-                   % freqdata.fourierspctrm = freqdata.fourierspctrm + 0.001*min(min(min(min(freqdata.fourierspctrm))))*j; % add a tiny imaginary component for compatibility
+                    
+                    % freqdata.fourierspctrm = freqdata.fourierspctrm + 0.001*min(min(min(min(freqdata.fourierspctrm))))*j; % add a tiny imaginary component for compatibility
                     
                     timefreq_data{1} = data;
                     for c = 1:length(timefreq_data{1}.trial)
@@ -518,16 +537,16 @@ nbchan = length(timefreq_data{1}.label);
 
 for q = 1:numbands
     trlmat = cat(3,timefreq_data{q}.trial{:});
-       
+    
     if strcmpi(settings.tfparams.method,'irasa')
-       trlmat(find(trlmat <= 0)) = NaN; 
+        trlmat(find(trlmat <= 0)) = NaN;
     end
     
     datacat{q}.pow = pfunc(abs(trlmat));
     datacat{q}.real = real(trlmat);
     
     datacat{q}.raw.itc = abs(nanmean(trlmat./abs(trlmat),3));
-
+    
     datacat{q}.itc.real(:,:) = (datacat{q}.raw.itc(:,poststim_real)-nanmean(datacat{q}.raw.itc(:,prestim_real),2));
     datacat{q}.itc.pseudo(:,:) = (datacat{q}.raw.itc(:,poststim_pseudo)-nanmean(datacat{q}.raw.itc(:,prestim_pseudo),2))./...
         nanmean(datacat{q}.raw.itc(:,prestim_pseudo),2);
@@ -618,11 +637,8 @@ for q = 1:settings.nfreqs
     end
     
     
-    %% ERSP and ITC    
+    %% ERSP and ITC
     datacalc{q}.raw.ersp(:,:) = nanmean(datacat{q}.pow,3);
-    datacalc{q}.ersp.poststimindx = squeeze(trapz(100*(datacat{q}.pow(:,poststim_real,:)-nanmean(datacat{q}.pow(:,prestim_real,:),2))./...
-        nanmean(datacat{q}.pow(:,prestim_real,:),2),2)); % for behaviour
-    datacalc{q}.ersp.prestimpow = nanmean(datacat{q}.pow(:,prestim_real,:),2);
     
     datacalc{q}.ersp.pseudo(:,:) = (nanmean(datacat{q}.pow(:,poststim_pseudo,:),3)...
         -nanmean(nanmean(datacat{q}.pow(:,prestim_pseudo,:),3),2));
@@ -676,7 +692,7 @@ for q = 1:settings.nfreqs
             -nanmean(nanmean(datacat{q}.pow(c,prestim_real,find(~splitindex)),3),2));
         datacalc{q}.naddersp.real(c,:,2) = (nanmean(datacat{q}.pow(c,poststim_real,find(splitindex)),3)...
             -nanmean(nanmean(datacat{q}.pow(c,prestim_real,find(splitindex)),3),2));
-       
+        
         switch settings.units
             case 'prcchange'
                 datacalc{q}.naddersp.real(c,:,1) = 100*datacalc{q}.naddersp.real(c,:,1)./nanmean(nanmean(datacat{q}.pow(c,prestim_real,:),3),2);

@@ -132,15 +132,37 @@ if ~strcmpi(settings.datatype,'ECoG') || strcmpi(settings.ecog.method,'roi')
         
         ersp_pt_stats{q} = EasyClusterCorrect({permute(squeeze(allmeas{q}.naddersp.diff(:,:,1,:)),[1 3 2]),permute(squeeze(allmeas{q}.naddersp.diff(:,:,2,:)),[1 3 2])},...
             settings.datasetinfo,'ft_statfun_fast_signrank',opts);
+        ersp_pt_stats{q}.effsizetc = squeeze(mean(permute(squeeze(allmeas{q}.naddersp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.naddersp.diff(:,:,2,:)),[1 3 2]),2)./...
+            std(permute(squeeze(allmeas{q}.naddersp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.naddersp.diff(:,:,2,:)),[1 3 2]),[],2));
+        ersp_pt_stats{q}.effsize_pos = sum(sum(ersp_pt_stats{q}.effsizetc.*(ersp_pt_stats{q}.posclusters.prob<0.05)))./sum(sum(ersp_pt_stats{q}.posclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+        ersp_pt_stats{q}.effsize_neg = sum(sum(ersp_pt_stats{q}.effsizetc.*(ersp_pt_stats{q}.negclusters.prob<0.05)))./sum(sum(ersp_pt_stats{q}.negclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+
         
         ersp_ttv_stats{q} = EasyClusterCorrect({permute(allmeas{q}.ttversp.real,[1 3 2]) permute(zeromat,[1 3 2])},settings.datasetinfo,'ft_statfun_fast_signrank',opts);
-        %ersp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerspindex,allmeas{q}.ttverspindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
+        ersp_ttv_stats{q}.effsizetc = squeeze(mean(permute(allmeas{q}.ttversp.real,[1 3 2]),2)./...
+            std(permute(allmeas{q}.ttversp.real,[1 3 2]),[],2));
+        ersp_ttv_stats{q}.effsize_pos = sum(sum(ersp_ttv_stats{q}.effsizetc.*(ersp_ttv_stats{q}.posclusters.prob<0.05)))./sum(sum(ersp_ttv_stats{q}.posclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+        ersp_ttv_stats{q}.effsize_neg = sum(sum(ersp_ttv_stats{q}.effsizetc.*(ersp_ttv_stats{q}.negclusters.prob<0.05)))./sum(sum(ersp_ttv_stats{q}.negclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+        
+        
+        ersp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerspindex,allmeas{q}.ttverspindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
         try
         if q <= nerp
             erp_pt_stats{q} = EasyClusterCorrect({permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2]),permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2])},...
                 settings.datasetinfo,'ft_statfun_fast_signrank',opts);
+            erp_pt_stats{q}.effsizetc = squeeze(mean(permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2]),2)./...
+                std(permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2]),[],2));
+            ersp_pt_stats{q}.effsize_pos = sum(sum(erp_pt_stats{q}.effsizetc.*(erp_pt_stats{q}.posclusters.prob<0.05)))./sum(sum(erp_pt_stats{q}.posclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+            ersp_pt_stats{q}.effsize_neg = sum(sum(erp_pt_stats{q}.effsizetc.*(erp_pt_stats{q}.negclusters.prob<0.05)))./sum(sum(erp_pt_stats{q}.negclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+            
             erp_ttv_stats{q} = EasyClusterCorrect({permute(allmeas{q}.ttv.real,[1 3 2]) permute(zeromat,[1 3 2])},settings.datasetinfo,'ft_statfun_fast_signrank',opts);
-            %erp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerpindex,allmeas{q}.ttvindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
+            erp_ttv_stats{q}.effsizetc = squeeze(mean(permute(allmeas{q}.ttv.real,[1 3 2]),2)./...
+                std(permute(allmeas{q}.ttv.real,[1 3 2]),[],2));
+            erp_ttv_stats{q}.effsize_pos = sum(sum(erp_ttv_stats{q}.effsizetc.*(erp_ttv_stats{q}.posclusters.prob<0.05)))./sum(sum(erp_ttv_stats{q}.posclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+            erp_ttv_stats{q}.effsize_neg = sum(sum(erp_ttv_stats{q}.effsizetc.*(erp_ttv_stats{q}.negclusters.prob<0.05)))./sum(sum(erp_ttv_stats{q}.negclusters.prob<0.05)); % mean effect size over all sensors in significant cluster
+        
+            
+            erp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerpindex,allmeas{q}.ttvindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
         end
         catch
 	end
