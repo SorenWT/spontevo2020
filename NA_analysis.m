@@ -90,7 +90,6 @@ function settings = SetDefaults(settings)
 
 settings = setdefault(settings,'comparefreqs','no');
 
-
 if ~isfield(settings,'files')
     if strmcpi(settings.datatype,'EEG')
         settings.files = '*.set';
@@ -124,6 +123,10 @@ settings = setdefault(settings,'load_allmeas','no');
 settings.nfreqs = length(settings.tfparams.fbandnames);
 
 settings = setdefault(settings,'pool',8);
+
+if length(settings.pool) == 1
+    settings.pool = repmat(settings.pool,1,length(settings.steps)); % this way can set different pool sizes for different steps
+end
 
 if isfield(settings.datasetinfo,'label')
     settings.nbchan = length(settings.datasetinfo.label);

@@ -4,12 +4,12 @@ files = dir(settings.files);
 
 pool = gcp('nocreate');
 
-if settings.pool > 1
-    if ~isempty(pool) && pool.NumWorkers ~= settings.pool
+if settings.pool(find(strcmpi(settings.steps,'tf_filter'))) > 1
+    if ~isempty(pool) && pool.NumWorkers ~= settings.pool(find(strcmpi(settings.steps,'tf_filter')))
         delete(pool)
-        parpool(settings.pool)
+        parpool(settings.pool(find(strcmpi(settings.steps,'tf_filter'))))
     elseif isempty(pool)
-        parpool(settings.pool)
+        parpool(settings.pool(find(strcmpi(settings.steps,'tf_filter'))))
     end
 end
 
@@ -20,7 +20,7 @@ if strcmpi(settings.tfparams.pf_adjust,'yes')
     pf = zeros(1,length(files));
 end
 
-if settings.pool > 1
+if settings.pool(find(strcmpi(settings.steps,'tf_filter'))) > 1
     parfor i = 1:length(files)
         if strcmpi(settings.datatype,'EEG')
             EEG = pop_loadset('filename',files(i).name,'filepath',settings.inputdir);

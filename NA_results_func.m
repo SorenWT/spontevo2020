@@ -10,10 +10,11 @@ else
     nerp = 1;
 end
 
-%if strcmpi(settings.tfparams.pf_adjust,'yes')
+if strcmpi(settings.tfparams.pf_adjust,'yes') && size(settings.tfparams.fbands,1) == 1
+    settings = NA_alpha_pf(settings);
 %  alloutputs.alpha_pf = settings.alpha_pf;
 %  alloutputs.fbands_adjusted = settings.tfparams.fbands;
-%end
+end
 %alloutputs.settings = settings;
 
 save(fullfile(settings.outputdir,[settings.datasetname '_results.mat']),'alloutputs','-v7.3')
@@ -119,7 +120,7 @@ if ~strcmpi(settings.datatype,'ECoG') || strcmpi(settings.ecog.method,'roi')
         opts.minnbchan = 0;
     end
     
-    opts.parpool = settings.pool;
+    opts.parpool = settings.pool(find(strcmpi(settings.steps,'results')));
     
     tcourse_design = tril(ones(numbands))-eye(numbands);
     

@@ -36,9 +36,9 @@ for i = 1:length(settings.behav)
             case 'erspindex'
                 if strcmpi(settings.behav{i}.design,'within')
                     indvar = cell(1,size(allmeas{2}.ersp.poststimindx,3));                 
-                    for q = 1:size(allmeas{2}.ersp.poststimindx,3)
+                    for q = 1:length(allmeas{2}.ersp.poststimindx)
                         for qq = 1:length(foi)
-                            indvar{q}(:,:,qq) = allmeas{foi(qq)}.ersp.poststimindx(:,:,q)';
+                            indvar{q}(:,:,qq) = allmeas{foi(qq)}.ersp.poststimindx{q}';
                         end
                     end
                     
