@@ -1,4 +1,4 @@
-function [settings] = NA_tf_func(settings)
+function [settings] = NA_tf_camcan_randpseudo(settings)
 
 files = dir(settings.files);
 
@@ -18,6 +18,7 @@ foi = cell(1,length(files));
 if strcmpi(settings.tfparams.pf_adjust,'yes')
     allfreqs = cell(1,length(files));
     pf = zeros(1,length(files));
+    ntrl = zeros(1,length(files));
 end
 
 if settings.pool > 1
@@ -27,7 +28,7 @@ if settings.pool > 1
             data = eeglab2fieldtrip(EEG,'preprocessing','none');
             data = ft_struct2single(data);
         else
-            data = parload(files(i).name,'data');
+            data = parload(files(i).name,'cont_data');
         end
         %data = ft_struct2single(data);
         
@@ -39,7 +40,7 @@ if settings.pool > 1
         end
         
         timefreq_data = cell(1,length(freqs));
-        if strcmpi(settings.tfparams.continue,'no') ||  ~exist(fullfile(settings.outputdir,[settings.datasetname '_' files(i).name '_calc.mat']),'file')
+        if ~exist(fullfile(settings.outputdir,[settings.datasetname '_' files(i).name '_calc.mat']),'file')
             switch settings.tfparams.method
                 case 'hilbert'
                     if data.fsample ~= settings.srate
@@ -78,23 +79,34 @@ if settings.pool > 1
                     
                     % load in continuous data and events
                     
-                    event = parload([extractBefore(files(i).name,'_') '_event.mat'],'event');
-                    types = extractfield(event,'type');
-                    tpoints = extractfield(event,'sample');
-                    latencies = tpoints(find(strcmpi(types,'Trigger')));
-                    allvalues = extractfield(event,'value');
-                    values = allvalues(find(strcmpi(types,'Trigger')));
-                    latencies(find(values < 0)) = [];
-                    latencies = round(latencies/2);
+                    %event = parload([char(extractBefore(files(i).name,'_continuous')) '_event.mat'],'event');
+                    %types = extractfield(event,'type');
+                    % tpoints = extractfield(event,'sample');
+                    
+                    
+                    %latencies = tpoints(find(strcmpi(types,'Trigger')));
+                    %allvalues = extractfield(event,'value');
+                    %values = allvalues(find(strcmpi(types,'Trigger')));
+                    %latencies(find(values < 0)) = [];
+                    %latencies = round(latencies/2);
+                    
+                    epodata = parload(['~/Documents/camcan/Preprocessed/Task/Epoched/' char(extractBefore(files(i).name,'_continuous')) '_epoched_long_1Hz.mat'],'data');
+                    latencies = epodata.sampleinfo(:,1)'+1000;
+                    epodata = []; % save memory
+                    
                     itis = diff([latencies(1) latencies]); % don't keep the first trial since you don't know how long the first ITI really was
-                    goodevents = find(itis >=3000); % keep trials where the preceeding iti was 6 seconds or longer
+                    goodevents = find(itis >=2500); % keep trials where the preceeding iti was 5 seconds or longer
+                    ntrl(i) = length(goodevents); % save this for later to remove people with too few trials
                     
                     timefreq_data{1} = data;
                     for q = 1:length(goodevents)
                         maxltrial = length(settings.pseudo.prestim)+length(settings.pseudo.poststim);
-                        pseudostart = randsample((latencies(goodevents(q)-1)+2000):(latencies(goodevents(q))-2000-maxltrial-ceil(settings.srate/5)),1);
-                        pseudoindx = pseudostart:(pseudostart+maxltrial);
-                        realindx = (latencies(goodevents(q))-length(settings.real.prestim)):(latencies(goodevents(q))+length(settings.real.poststim));
+                        % pseudotrial can start anywhere from 2 s after the
+                        % previous trial to 2 s + maxtrllength before the
+                        % next trial
+                        pseudostart = randsample((latencies(goodevents(q)-1)+1000):(latencies(goodevents(q))-1000-maxltrial),1);
+                        pseudoindx = (pseudostart+1):(pseudostart+maxltrial);
+                        realindx = (latencies(goodevents(q))-length(settings.real.prestim)+1):(latencies(goodevents(q))+length(settings.real.poststim));
                         
                         data_allrange = [pseudoindx realindx];
                         %data_allrange = (settings.pseudo.prestim(1)-ceil(settings.srate/5)):(settings.real.poststim(end));
@@ -469,19 +481,20 @@ if strcmpi(settings.tfparams.pf_adjust,'yes')
     settings.tfparams.fbands = allfreqs;
     settings.alpha_pf = pf;
 end
+settings.ntrl = ntrl;
 
 if ~strcmpi(settings.tfparams.method,'hilbert')
     settings.nfreqs = length(foi{1})+1;
     
-    prestim_pseudo = settings.pseudo.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-    prestim_real = settings.real.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-    poststim_pseudo = settings.pseudo.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-    poststim_real = settings.real.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %prestim_pseudo = settings.pseudo.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %prestim_real = settings.real.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %poststim_pseudo = settings.pseudo.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %poststim_real = settings.real.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
     
-    settings.pseudo.prestim = prestim_pseudo;
-    settings.real.prestim = prestim_real;
-    settings.pseudo.poststim = poststim_pseudo;
-    settings.real.poststim = poststim_real;
+    %settings.pseudo.prestim = prestim_pseudo;
+    %settings.real.prestim = prestim_real;
+    %settings.pseudo.poststim = poststim_pseudo;
+    %settings.real.poststim = poststim_real;
 end
 
 
@@ -516,17 +529,17 @@ elseif strcmpi(settings.tfparams.parameter,'amplitude')
     end
 end
 
-if strcmpi(settings.tfparams.method,'hilbert') || strcmpi(settings.tfparams.method,'irasa')
+%if strcmpi(settings.tfparams.method,'hilbert') || strcmpi(settings.tfparams.method,'irasa')
     prestim_pseudo = settings.pseudo.prestim;
     prestim_real = settings.real.prestim;
     poststim_pseudo = settings.pseudo.poststim;
     poststim_real = settings.real.poststim;
-else
-    prestim_pseudo = settings.pseudo.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-    prestim_real = settings.real.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-    poststim_pseudo = settings.pseudo.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-    poststim_real = settings.real.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
-end
+%else
+    %prestim_pseudo = settings.pseudo.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %prestim_real = settings.real.prestim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %poststim_pseudo = settings.pseudo.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+    %poststim_real = settings.real.poststim - settings.pseudo.prestim(1)+1+ceil(settings.srate/5);
+%end
 
 datacat = cell(size(timefreq_data));
 for c = 1:length(datacat)

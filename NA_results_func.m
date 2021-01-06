@@ -12,8 +12,8 @@ end
 
 if strcmpi(settings.tfparams.pf_adjust,'yes') && size(settings.tfparams.fbands,1) == 1
     settings = NA_alpha_pf(settings);
-%  alloutputs.alpha_pf = settings.alpha_pf;
-%  alloutputs.fbands_adjusted = settings.tfparams.fbands;
+    %  alloutputs.alpha_pf = settings.alpha_pf;
+    %  alloutputs.fbands_adjusted = settings.tfparams.fbands;
 end
 %alloutputs.settings = settings;
 
@@ -60,10 +60,10 @@ if ~exist(fullfile(settings.outputdir,[settings.datasetname '_allmeas.mat']),'fi
                 dimn(end) = [];
             end
             dimn = length(dimn);
-	    if(~strcmpi(fields{c},'ersp.poststimindx') && ~strcmpi(fields{c},'ersp.prestimpow'))
-            tmp = cat(dimn+1,alldata{q,c,:});
-	    else
-	    tmp = squeeze(alldata(q,c,:));
+            if(~strcmpi(fields{c},'ersp.poststimindx') && ~strcmpi(fields{c},'ersp.prestimpow'))
+                tmp = cat(dimn+1,alldata{q,c,:});
+            else
+                tmp = squeeze(alldata(q,c,:));
             end
             allmeas{q} = assignfield_nest(allmeas{q},fields{c},tmp);
         end
@@ -114,7 +114,7 @@ if ~strcmpi(settings.datatype,'ECoG') || strcmpi(settings.ecog.method,'roi')
     erp_ttv_stats = cell(1,nerp);
     
     opts = struct;
-    opts.nrand = 1000;
+    opts.nrand = 10000;
     
     if strcmpi(settings.datatype,'ECoG')
         opts.minnbchan = 0;
@@ -139,53 +139,59 @@ if ~strcmpi(settings.datatype,'ECoG') || strcmpi(settings.ecog.method,'roi')
             settings.datasetinfo,'ft_statfun_fast_signrank',opts);
         ersp_pt_stats{q}.effsizetc = squeeze(mean(permute(squeeze(allmeas{q}.naddersp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.naddersp.diff(:,:,2,:)),[1 3 2]),2)./...
             std(permute(squeeze(allmeas{q}.naddersp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.naddersp.diff(:,:,2,:)),[1 3 2]),[],2));
-	if length(ersp_pt_stats{q}.posclusters) > 0
-        ersp_pt_stats{q}.effsize_pos = sum(sum(ersp_pt_stats{q}.effsizetc.*(ersp_pt_stats{q}.posclusters(1).prob==ersp_pt_stats{q}.prob)))./sum(sum(ersp_pt_stats{q}.posclusters(1).prob==ersp_pt_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-	end        
-	if length(ersp_pt_stats{q}.negclusters) > 0
-	ersp_pt_stats{q}.effsize_neg = sum(sum(ersp_pt_stats{q}.effsizetc.*(ersp_pt_stats{q}.negclusters(1).prob==ersp_pt_stats{q}.prob)))./sum(sum(ersp_pt_stats{q}.negclusters(1).prob==ersp_pt_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-	end
+        if length(ersp_pt_stats{q}.posclusters) > 0
+            ersp_pt_stats{q}.effsize_pos = sum(sum(ersp_pt_stats{q}.effsizetc.*(ersp_pt_stats{q}.posclusterslabelmat==1)))./...
+                sum(sum(ersp_pt_stats{q}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+        end
+        if length(ersp_pt_stats{q}.negclusters) > 0
+            ersp_pt_stats{q}.effsize_neg = sum(sum(ersp_pt_stats{q}.effsizetc.*(ersp_pt_stats{q}.negclusterslabelmat==1)))./...
+                sum(sum(ersp_pt_stats{q}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+        end
         
         ersp_ttv_stats{q} = EasyClusterCorrect({permute(allmeas{q}.ttversp.real,[1 3 2]) permute(zeromat,[1 3 2])},settings.datasetinfo,'ft_statfun_fast_signrank',opts);
         ersp_ttv_stats{q}.effsizetc = squeeze(mean(permute(allmeas{q}.ttversp.real,[1 3 2]),2)./...
             std(permute(allmeas{q}.ttversp.real,[1 3 2]),[],2));
-if length(ersp_ttv_stats{q}.posclusters)>0        
-ersp_ttv_stats{q}.effsize_pos = sum(sum(ersp_ttv_stats{q}.effsizetc.*(ersp_ttv_stats{q}.posclusters(1).prob==ersp_ttv_stats{q}.prob)))./sum(sum(ersp_ttv_stats{q}.posclusters(1).prob==ersp_ttv_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-end
-if length(ersp_ttv_stats{q}.negclusters)>0
-        ersp_ttv_stats{q}.effsize_neg = sum(sum(ersp_ttv_stats{q}.effsizetc.*(ersp_ttv_stats{q}.negclusters(1).prob==ersp_ttv_stats{q}.prob)))./sum(sum(ersp_ttv_stats{q}.negclusters(1).prob==ersp_ttv_stats{q}.prob)); % mean effect size over all sensors in significant cluster
+        if length(ersp_ttv_stats{q}.posclusters)>0
+            ersp_ttv_stats{q}.effsize_pos = sum(sum(ersp_ttv_stats{q}.effsizetc.*(ersp_ttv_stats{q}.posclusterslabelmat==1)))./...
+                sum(sum(ersp_ttv_stats{q}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+        end
+        if length(ersp_ttv_stats{q}.negclusters)>0
+            ersp_ttv_stats{q}.effsize_neg = sum(sum(ersp_ttv_stats{q}.effsizetc.*(ersp_ttv_stats{q}.negclusterslabelmat==1)))./...
+                sum(sum(ersp_ttv_stats{q}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
         end
         
         ersp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerspindex,allmeas{q}.ttverspindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
         try
-        if q <= nerp
-            erp_pt_stats{q} = EasyClusterCorrect({permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2]),permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2])},...
-                settings.datasetinfo,'ft_statfun_fast_signrank',opts);
-            erp_pt_stats{q}.effsizetc = squeeze(mean(permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2]),2)./...
-                std(permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2]),[],2));
-           
-if length(erp_pt_stats{q}.posclusters)>0
-	 erp_pt_stats{q}.effsize_pos = sum(sum(erp_pt_stats{q}.effsizetc.*(erp_pt_stats{q}.posclusters(1).prob==erp_pt_stats{q}.prob)))./sum(sum(erp_pt_stats{q}.posclusters(1).prob==erp_pt_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-end           
-if length(erp_pt_stats{q}.negclusters)>0
- erp_pt_stats{q}.effsize_neg = sum(sum(erp_pt_stats{q}.effsizetc.*(erp_pt_stats{q}.negclusters(1).prob==erp_pt_stats{q}.prob)))./sum(sum(erp_pt_stats{q}.negclusters(1).prob==erp_pt_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-end            
-
-            erp_ttv_stats{q} = EasyClusterCorrect({permute(allmeas{q}.ttv.real,[1 3 2]) permute(zeromat,[1 3 2])},settings.datasetinfo,'ft_statfun_fast_signrank',opts);
-            erp_ttv_stats{q}.effsizetc = squeeze(mean(permute(allmeas{q}.ttv.real,[1 3 2]),2)./...
-                std(permute(allmeas{q}.ttv.real,[1 3 2]),[],2));
-if length(erp_ttv_stats{q}.posclusters)>0
-            erp_ttv_stats{q}.effsize_pos = sum(sum(erp_ttv_stats{q}.effsizetc.*(erp_ttv_stats{q}.posclusters(1).prob==erp_ttv_stats{q}.prob)))./sum(sum(erp_ttv_stats{q}.posclusters(1).prob==erp_ttv_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-end
-if length(erp_ttv_stats{q}.negclusters)>0
-            erp_ttv_stats{q}.effsize_neg = sum(sum(erp_ttv_stats{q}.effsizetc.*(erp_ttv_stats{q}.negclusters(1).prob==erp_ttv_stats{q}.prob)))./sum(sum(erp_ttv_stats{q}.negclusters(1).prob==erp_ttv_stats{q}.prob)); % mean effect size over all sensors in significant cluster
-        end
-            
-            erp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerpindex,allmeas{q}.ttvindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
-        end
+            if q <= nerp
+                erp_pt_stats{q} = EasyClusterCorrect({permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2]),permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2])},...
+                    settings.datasetinfo,'ft_statfun_fast_signrank',opts);
+                erp_pt_stats{q}.effsizetc = squeeze(mean(permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2]),2)./...
+                    std(permute(squeeze(allmeas{q}.nadderp.diff(:,:,1,:)),[1 3 2])-permute(squeeze(allmeas{q}.nadderp.diff(:,:,2,:)),[1 3 2]),[],2));
+                
+                if length(erp_pt_stats{q}.posclusters)>0
+                    erp_pt_stats{q}.effsize_pos = sum(sum(erp_pt_stats{q}.effsizetc.*(erp_pt_stats{q}.posclusterslabelmat==1)))./sum(sum(erp_pt_stats{q}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+                end
+                if length(erp_pt_stats{q}.negclusters)>0
+                    erp_pt_stats{q}.effsize_neg = sum(sum(erp_pt_stats{q}.effsizetc.*(erp_pt_stats{q}.negclusterslabelmat==1)))./sum(sum(erp_pt_stats{q}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+                end
+                
+                erp_ttv_stats{q} = EasyClusterCorrect({permute(allmeas{q}.ttv.real,[1 3 2]) permute(zeromat,[1 3 2])},settings.datasetinfo,'ft_statfun_fast_signrank',opts);
+                erp_ttv_stats{q}.effsizetc = squeeze(mean(permute(allmeas{q}.ttv.real,[1 3 2]),2)./...
+                    std(permute(allmeas{q}.ttv.real,[1 3 2]),[],2));
+                if length(erp_ttv_stats{q}.posclusters)>0
+                    erp_ttv_stats{q}.effsize_pos = sum(sum(erp_ttv_stats{q}.effsizetc.*(erp_ttv_stats{q}.posclusterslabelmat==1)))./...
+                        sum(sum(erp_ttv_stats{q}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+                end
+                if length(erp_ttv_stats{q}.negclusters)>0
+                    erp_ttv_stats{q}.effsize_neg = sum(sum(erp_ttv_stats{q}.effsizetc.*(erp_ttv_stats{q}.negclusterslabelmat==1)))./...
+                        sum(sum(erp_ttv_stats{q}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+                end
+                
+                erp_corrstats{q} = EasyClusterCorrect({allmeas{q}.naerpindex,allmeas{q}.ttvindex},settings.datasetinfo,'ft_statfun_correlationT',opts);
+            end
         catch
-	end
-
+        end
+        
         if strcmpi(settings.comparefreqs,'yes')
             for c = (q+1):numbands
                 ersp_pt_tcoursestats{q,c} = EasyClusterCorrect({permute(squeeze(allmeas{q}.naddersp.diff(:,:,2,:)-allmeas{q}.naddersp.diff(:,:,1,:)),[1 3 2]),...
@@ -222,14 +228,14 @@ for q = 1:numbands
     tmp = allmeas{q}.naddersp.diff.*alloutputs.ersp.pt.stats{q}.mask;
     allmeas{q}.naerspindex = squeeze(trapz(tmp(:,:,2,:),2)-trapz(tmp(:,:,1,:),2));
     if q <= nerp
-try
-        tmp = allmeas{q}.nadderp.diff.*alloutputs.erp.pt.stats{q}.mask;
-        allmeas{q}.naerpindex = squeeze(trapz(tmp(:,:,2,:),2)-trapz(tmp(:,:,1,:),2));
-        tmp = allmeas{q}.ttv.real.*alloutputs.erp.ttv.stats{q}.mask;
-        allmeas{q}.ttvindex = squeeze(trapz(tmp,2));
-catch
-end   
- end
+        try
+            tmp = allmeas{q}.nadderp.diff.*alloutputs.erp.pt.stats{q}.mask;
+            allmeas{q}.naerpindex = squeeze(trapz(tmp(:,:,2,:),2)-trapz(tmp(:,:,1,:),2));
+            tmp = allmeas{q}.ttv.real.*alloutputs.erp.ttv.stats{q}.mask;
+            allmeas{q}.ttvindex = squeeze(trapz(tmp,2));
+        catch
+        end
+    end
     tmp = allmeas{q}.ttversp.real.*alloutputs.ersp.ttv.stats{q}.mask;
     allmeas{q}.ttverspindex = squeeze(trapz(tmp,2));
 end
@@ -260,13 +266,13 @@ end
 
 %% Calculation of ERP nonadditivity
 try
-for q = 1:nerp
-    alloutputs.erp.pt.sig(q,:) = signrank_mat(allmeas{q}.naerpindex,zeros(size(allmeas{q}.naerpindex)),2);
-    alloutputs.erp.ttv.sig(q,:) = signrank_mat(allmeas{q}.ttvindex,zeros(size(allmeas{q}.ttvindex)),2);
-    [r p] = nancorr(allmeas{q}.naerpindex',allmeas{q}.ttvindex','Type','Spearman');
-    alloutputs.erp.corr.r(:,q) = r(find(eye(nbchan)));
-    alloutputs.erp.corr.p(:,q) = p(find(eye(nbchan)));
-end
+    for q = 1:nerp
+        alloutputs.erp.pt.sig(q,:) = signrank_mat(allmeas{q}.naerpindex,zeros(size(allmeas{q}.naerpindex)),2);
+        alloutputs.erp.ttv.sig(q,:) = signrank_mat(allmeas{q}.ttvindex,zeros(size(allmeas{q}.ttvindex)),2);
+        [r p] = nancorr(allmeas{q}.naerpindex',allmeas{q}.ttvindex','Type','Spearman');
+        alloutputs.erp.corr.r(:,q) = r(find(eye(nbchan)));
+        alloutputs.erp.corr.p(:,q) = p(find(eye(nbchan)));
+    end
 catch
 end
 

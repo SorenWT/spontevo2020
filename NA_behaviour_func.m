@@ -2,9 +2,9 @@ function NA_behaviour_func(settings)
 
 load([settings.outputdir '/' settings.datasetname '_allmeas.mat'])
 load([settings.outputdir '/' settings.datasetname '_results.mat'])
-if isfield(settings,'rest')
-    load([settings.outputdir '/' settings.datasetname '_restmeas.mat'])
-end
+%if isfield(settings,'rest')
+%    load([settings.outputdir '/' settings.datasetname '_restmeas.mat'])
+%end
 
 prestim_pseudo = settings.pseudo.prestim;
 prestim_real = settings.real.prestim;
@@ -35,7 +35,7 @@ for i = 1:length(settings.behav)
         switch settings.behav{i}.indvar
             case 'erspindex'
                 if strcmpi(settings.behav{i}.design,'within')
-                    indvar = cell(1,size(allmeas{2}.ersp.poststimindx,3));                 
+                    indvar = cell(1,size(allmeas{2}.ersp.poststimindx,1));                 
                     for q = 1:length(allmeas{2}.ersp.poststimindx)
                         for qq = 1:length(foi)
                             indvar{q}(:,:,qq) = allmeas{foi(qq)}.ersp.poststimindx{q}';
@@ -92,12 +92,15 @@ for i = 1:length(settings.behav)
                 end
                 
             case 'prestimpow'
-                indvar = cell(1,size(allmeas{2}.ersp.prestimpow,3));
-                for q = 1:size(allmeas{2}.ersp.prestimpow,3)
+                indvar = cell(1,size(allmeas{2}.ersp.prestimpow,1));
+                for q = 1:length(allmeas{2}.ersp.prestimpow)
                     for qq = 1:length(foi)
-                        indvar{q}(:,:,qq) = allmeas{foi(qq)}.ersp.prestimpow(:,:,q)';
+                        % multiply by a scalar so the data is large enough
+                        % that fitlme recognizes that it's full rank
+                        indvar{q}(:,:,qq) = (1e24).*squeeze(allmeas{foi(qq)}.ersp.prestimpow{q})';
                     end
                 end
+                
                 
             case 'ttvindex'
                 for q = 1:size(allmeas{1}.ttvindex,2)
@@ -162,7 +165,7 @@ for i = 1:length(settings.behav)
                         ' + (' settings.behav{i}.indvar '|Subject)'],'Distribution','binomial','Link','logit');
                 else
                     model{qq} = fitlme(designTbl,['Behav ~ ' settings.behav{i}.indvar ...
-                        ' + (' settings.behav{i}.indvar '|Subject)']);
+                        ' +(' settings.behav{i}.indvar '|Subject)']);
                 end
             end
             behav_meas{i}.model{q} = model;
@@ -190,7 +193,7 @@ for i = 1:length(settings.behav)
             opts.nrand = 10000;
             opts.minnbchan = 1;
             opts.external = horz(behav_data);
-            behav_meas{i}.stats = EasyClusterCorrect({indvar(:,:,q)},settings.datasetinfo,'ft_statfun_correlationT',opts);
+            behav_meas{i}.stats = EasyClusterCorrect({indvar(:,:,q)},settings.datasetinfo,'ft_statfun_spearman',opts);
         end
     end
     behav_meas{i}.settings = settings.behav{i};
@@ -199,6 +202,6 @@ for i = 1:length(settings.behav)
 end
 
 
-save([settings.outputdir '/' settings.datasetname '_behav.mat'],'behav_meas')
+save([settings.outputdir '/' settings.datasetname '_behav.mat'],'behav_meas','-v7.3')
 
 end

@@ -16,7 +16,7 @@ sig = sig - sigmask;
 sig(sig < 0) = 0;
 
 if nargin < 5
-   size = 3; 
+   size = 2; 
 end
 topoplot(data,chanlocs,'emarker2',{find(sig),'o','k',size,1},'emarker3',{find(sigmask),'o','w',1.5*size,1},...
     'electrodes','off','maplimits','maxmin')

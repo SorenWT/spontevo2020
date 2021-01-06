@@ -6,9 +6,9 @@ files = dir(settings.files);
 
 pool = gcp('nocreate');
 
-if isempty(pool) || pool.NumWorkers ~= settings.pool
+if isempty(pool) || pool.NumWorkers ~= settings.pool(1)
     delete(gcp('nocreate'))
-    parpool(settings.pool)
+    parpool(settings.pool(1))
 end
 
 fbands = cell(1,length(files));

@@ -89,7 +89,7 @@ datasetinfo.label = datasetinfo.label(1);
 
 prestim_pseudo = 351:400; poststim_pseudo = 401:800; prestim_real = 951:1000; poststim_real = 1001:1400;
 
-opts.minnbchan = 0; opts.nrand = 1000; opts.distmethod = 'distance';
+opts.minnbchan = 0; opts.nrand = 10000; opts.distmethod = 'distance';
 stats = cell(1,length(nvals));
 
 stats_erp_pt_neg = EasyClusterCorrect({permute(squeeze(datacalc_neg.nadderp.diff(1,:,1,:)),[3 2 1]),...

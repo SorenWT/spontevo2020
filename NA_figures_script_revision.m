@@ -1,5 +1,14 @@
 fbands = settings.tfparams.fbandnames;
 load('lkcmap2.mat')
+load('lkcmap.mat')
+
+monoorange = flipud(lkcmap(1:32,:));
+monoblue = lkcmap(33:end,:);
+
+monored = customcolormap_preset('red-white-blue');
+monoblue = monored(1:32,:);
+monored = flipud(monored(33:end,:));
+
 
 load([settings.outputdir '/' settings.datasetname '_allmeas.mat'])
 if exist([settings.outputdir '/' settings.datasetname '_results.mat'],'file')
@@ -39,14 +48,16 @@ figure
 
 p = panel('no-manage-font');
 
-set(gcf,'units','normalized','position',[0 0.5 1 0.5],'Color','w');
+set(gcf,'units','normalized','position',[0 0.4 1 0.6],'Color','w');
 
 p.pack('h',repmat({1/settings.nfreqs},settings.nfreqs,1)')
 for c = 1:settings.nfreqs
-    p(c).pack();
-    for cc = 1:4
-        p(c).pack({[0.25*(cc-1) 0 0.25 0.15]})
-    end
+    p(c).pack('v',{60 40});
+    %for cc = 1:4
+    %    p(c).pack({[0.25*(cc-1) 0 0.25 0.15]})
+    %end
+    p(c,2).pack(2,2);
+    
     p(c,1).select();    
     
     t = linspace(0,length(settings.real.poststim)*(1/settings.srate),length(settings.real.poststim));
@@ -62,8 +73,8 @@ for c = 1:settings.nfreqs
     if c == 1
         ylabelunits(settings)
     end
-    FixAxes(gca)
-    set(gca,'FontSize',11,'TitleFontSizeMultiplier',1.1)
+    FixAxes(gca,14)
+    set(gca,'XLim',[0 max(t)])
     
     plotindx = linspace(0,max(settings.aucindex),5);
     plotindx = movmean(plotindx,2);
@@ -72,22 +83,22 @@ for c = 1:settings.nfreqs
 
     %tindx =
     for cc = 1:4
-        p(c,cc+1).select()
+        p(c,2,ceil(cc/2),cc-2*floor(cc/3)).select()
         %axes(p(2,c,cc+1).axis)
         plotdata = nanmean(squeeze(allmeas{c}.naddersp.diff(:,plotindx(cc),2,:))...
             - squeeze(allmeas{c}.naddersp.diff(:,plotindx(cc),1,:)),2);
         if strcmpi(settings.datatype,'MEG')
             ft_cluster_topoplot(settings.layout,plotdata,settings.datasetinfo.label,...
-                ones(size(alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)))),0.*alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)));
+                ones(size(alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)))),alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)));
         else
             cluster_topoplot(plotdata,settings.layout,...
-                ~(0.*alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc))),0.*alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)));
+                ones(size(alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)))),alloutputs.ersp.pt.stats{c}.mask(:,plotindx(cc)));
         end
         colormap(lkcmap2)
         if cc == 4
             cbars(c) = colorbar;
         end
-        ax(cc) = p(c,cc+1).axis;
+        ax(cc) = p(c,2,ceil(cc/2),cc-2*floor(cc/3)).axis;
         title([num2str(plotindx(cc)*(1000/settings.srate)) ' ms'],'FontSize',10)
         %Set_Clim(ax(cc),[prctile(plotdata,20) prctile(plotdata,80)]);
     end
@@ -97,29 +108,38 @@ end
 
 
 p.de.margin = [5 5 5 5];
-p.de.marginright = 20;
-p.marginright = 10;
+%p.de.marginright = 20;
+p.marginright = 15;
+p.marginleft = 18;
+p.margintop = 10;
 % fix margins here
 
 set(gcf,'Color','w')
 
 for c = 1:settings.nfreqs
-    ax2(c) = p(c,1).axis;
-    cbars(c).Position = [ax2(c).Position(1)+ax2(c).Position(3) ax2(c).Position(2) cbars(c).Position(3) 0.15*ax2(c).Position(4)];
+    ax1(c) = p(c,1).axis;
+    p(c).marginright = 20;
+    p(c,1).marginbottom = 20;
 end
-Normalize_Ylim(ax2)
+Normalize_Ylim(ax1)
+yl = get(p(c,1).axis,'YLim');
+Set_Ylim(ax1,[yl(1) yl(2)+abs(diff(yl))*0.08]) % add extra headroom for sigmasks
 
 for c = 1:settings.nfreqs
+    cbars(c).Position = [p(c,2).position(1)+p(c,2).position(3)+0.05*p(c,2).position(3) p(c,2).position(2)+0.25*p(c,2).position(4) ...
+        cbars(c).Position(3) 0.5*p(c,2).position(4)];
+
     p(c,1).select()
-    Plot_sigmask(p(2,c,1).axis,alloutputs.ersp.pt.stats{c}.prob < 0.05,'cmapline','LineWidth',5)
+    clust_sigmasks(gca,alloutputs.ersp.pt.stats{c});
+
     %H = sigstar({get(p(c,1).axis,'XLim')},min(min(alloutputs.ersp.pt.stats{c}.prob)),0,18)
     %delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
 end
 
 
-savefig('Fig2a.fig')
-export_fig('Fig2a.png','-m5')
-save('Panel2a.mat','p')
+savefig('Fig2a_noadj_400.fig')
+export_fig('Fig2a_noadj_400.png','-m5')
+save('Panel2a_noadj_400.mat','p')
 close
 
 
@@ -130,15 +150,16 @@ figure
 p = panel('no-manage-font');
 
 pos = get(gcf,'position');
-set(gcf,'units','normalized','position',[0 0.5 1 0.5],'Color','w');
+set(gcf,'units','normalized','position',[0 0.4 1 0.6],'Color','w');
 
 p.pack('h',repmat({1/settings.nfreqs},settings.nfreqs,1)')
 for c = 1:settings.nfreqs
-    p(c).pack();
-    for cc = 1:4
-        p(c).pack({[0.25*(cc-1) 0 0.25 0.15]})
-    end
+    p(c).pack('v',{60 40});
+    %for cc = 1:4
+    %    p(c).pack({[0.25*(cc-1) 0 0.25 0.15]})
+    %end
     p(c,1).select();
+    p(c,2).pack(2,2);
     plotband = c;
     
     t = linspace(0,length(settings.real.poststim)*(1/settings.srate),length(settings.real.poststim));
@@ -173,20 +194,20 @@ for c = 1:settings.nfreqs
     plotindx = round(plotindx);
     plotindx(1) = [];
     for cc = 1:4
-        p(c,cc+1).select()
+        p(c,2,ceil(cc/2),cc-2*floor(cc/3)).select()
         plotdata = nanmean(allmeas{c}.ttversp.real(:,plotindx(cc),:),3);
         if strcmpi(settings.datatype,'MEG')
             ft_cluster_topoplot(settings.layout,plotdata,settings.datasetinfo.label,...
-                ones(size(alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)))),0.*alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)));
+                ones(size(alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)))),alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)));
         else
             cluster_topoplot(plotdata,settings.layout,...
-                1-(0.*alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc))),0.*alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)));
+                ones(size(alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)))),alloutputs.ersp.ttv.stats{c}.mask(:,plotindx(cc)));
         end
         colormap(lkcmap2)
         if cc == 4
-            cbars1(c) = colorbar;
+            cbars(c) = colorbar;
         end
-        ax(cc) = p(c,cc+1).axis;
+        ax(cc) = p(c,2,ceil(cc/2),cc-2*floor(cc/3)).axis;
         title([num2str(plotindx(cc)*(1000/settings.srate)) ' ms'],'FontSize',10)
         %Set_Clim(ax(cc),[prctile(plotdata,20) prctile(plotdata,80)]);
     end
@@ -194,39 +215,43 @@ for c = 1:settings.nfreqs
 end
 clear ax
 
-for c = 1:settings.nfreqs
-    ax1(c) = p(c,1).axis;
-    cbars1(c).Position = [ax1(c).Position(1)+ax1(c).Position(3) ax1(c).Position(2) cbars1(c).Position(3) 0.15*ax1(c).Position(4)];
-end
-Normalize_Ylim(ax1)
-%Set_Ylim(ax1,[-80 60])
-
-for c = 1:settings.nfreqs    
-    p(c,1).select()
-    %Plot_sigmask(p(c,1).axis,alloutputs.ersp.ttv.stats{c}.prob < 0.05,'cmapline','LineWidth',5)
-    H = sigstar({get(p(c,1).axis,'XLim')},min(min(alloutputs.ersp.ttv.stats{c}.prob)),0,18)
-    delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
-end
-
-
 p.de.margin = [5 5 5 5];
+%p.de.marginright = 20;
+p.marginright = 15;
+p.margintop = 10; 
 p.marginleft = 18;
-p.marginbottom = 18;
-p.margintop = 8;
-p.marginright = 10;
-p.de.marginleft = 18;
+% fix margins here
 
 set(gcf,'Color','w')
 
-savefig('Fig2b.fig')
-export_fig('Fig2b.png','-m5')
-save('Panel2b.mat','p')
+for c = 1:settings.nfreqs
+    ax1(c) = p(c,1).axis;
+    p(c).marginright = 20;
+    p(c,1).marginbottom = 20;
+end
+Normalize_Ylim(ax1)
+yl = get(p(c,1).axis,'YLim');
+Set_Ylim(ax1,[yl(1) round(yl(2)+diff(yl)*0.08)]) % add extra headroom for sigmasks
+
+for c = 1:settings.nfreqs
+    cbars(c).Position = [p(c,2).position(1)+p(c,2).position(3)+0.05*p(c,2).position(3) p(c,2).position(2)+0.25*p(c,2).position(4) ...
+        cbars(c).Position(3) 0.5*p(c,2).position(4)];
+
+    p(c,1).select()
+    clust_sigmasks(gca,alloutputs.ersp.ttv.stats{c},1);
+    %H = sigstar({get(p(c,1).axis,'XLim')},min(min(alloutputs.ersp.pt.stats{c}.prob)),0,18)
+    %delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
+end
+
+savefig('Fig2b_200ms.fig')
+export_fig('Fig2b_200ms.png','-m5')
+save('Panel2b_200ms.mat','p')
 
 %% Figure 2c: Method correlation
 
 figure
 
-p = panel('no-manage-font')
+p = panel('no-manage-font');
 
 pos = get(gcf,'position');
 set(gcf,'units','normalized','position',[0 0.5 1 0.5],'Color','w');
@@ -240,6 +265,9 @@ for c = 1:settings.nfreqs
     p(c,1).select()
     nicecorrplot(nanmean(allmeas{c}.naerspindex,1),nanmean(allmeas{c}.ttverspindex,1),...
         {['Pseudotrial' newline 'method'],'TTV method'},'Plot','r');
+    if c ~= 1
+       ylabel('') 
+    end
     FixAxes(gca,14)
     
     title(fbands{c})
@@ -273,20 +301,24 @@ p.marginleft = 18;
 p.marginbottom = 25;
 p.margintop = 8;
 p.marginright = 10;
-p.de.marginleft = 14;
+p.de.marginleft = 18;
 % fix margins here
 
-for c = 1:settings.nfreqs
-    ax2(c) = p(c,1).axis;
-    cbars2(c).Position = [ax2(c).Position(1)+0.8*ax2(c).Position(3) ax2(c).Position(2)+0.7*ax2(c).Position(4) 0.07*ax2(c).Position(3) 0.28*ax2(c).Position(4)];
-end
+delete(cbars2(1:end-1))
+cbars2(1:end-1) = [];
+
+% for c = 1:settings.nfreqs
+%     ax2(c) = p(c,1).axis;
+% end
+c = length(ax2);
+cbars2.Position = [ax2(c).Position(1)+0.8*ax2(c).Position(3) ax2(c).Position(2)+0.7*ax2(c).Position(4) 0.07*ax2(c).Position(3) 0.28*ax2(c).Position(4)];
 Normalize_Ylim(ax2)
 
 set(gcf,'Color','w')
 
-savefig('Fig2c.fig')
-export_fig('Fig2c.png','-m4')
-save('Panel2c.mat','p')
+savefig('Fig2c_200ms.fig')
+export_fig('Fig2c_200ms.png','-m4')
+save('Panel2c_200ms.mat','p')
 close
 
 
@@ -294,6 +326,7 @@ close
 %% Figure 3: ERP nonadditivity
 
 figure
+clear cbars
 
 pos = get(gcf,'position');
 set(gcf,'units','normalized','position',[0 0 1 1],'Color','w');
@@ -303,10 +336,11 @@ p.pack('v',{50 50});
 p(1).pack('h',{50 50})
 p(2).pack('h',{25 50 25});
 
-p(1,1).pack()
-for cc = 1:4
-    p(1,1).pack({[0.25*(cc-1) 0 0.25 0.15]})
-end
+p(1,1).pack('h',{60 40})
+%for cc = 1:4
+%    p(1,1).pack({[0.25*(cc-1) 0 0.25 0.15]})
+%end
+p(1,1,2).pack(2,2)
 p(1,1,1).select();
 t = linspace(0,length(settings.real.poststim)*(1/settings.srate),length(settings.real.poststim));
 hold on
@@ -314,9 +348,12 @@ stdshade(t,squeeze(nanmean(allmeas{1}.nadderp.real(:,:,1,:),1))-...
     squeeze(nanmean(allmeas{1}.nadderp.pseudo(:,:,1,:),1)),'b',0.15,1,'sem')
 stdshade(t,squeeze(nanmean(allmeas{1}.nadderp.real(:,:,2,:),1))-...
     squeeze(nanmean(allmeas{1}.nadderp.pseudo(:,:,2,:),1)),'r',0.15,1,'sem')
-%Plot_sigmask(gca,alloutputs.erp.pt.stats{1}.mask,'cmapline','LineWidth',5)
-H = sigstar({get(p(1,1,1).axis,'XLim')},min(min(alloutputs.erp.pt.stats{1}.prob)),0,18)
-delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
+yl = get(gca,'YLim');
+set(gca,'YLim',[yl(1) yl(2)+0.08*diff(yl)]);
+clust_sigmasks(gca,alloutputs.erp.pt.stats{1},0);
+set(gca,'YLim',[yl(1) yl(2)+0.08*diff(yl)]);%Plot_sigmask(gca,alloutputs.erp.pt.stats{1}.mask,'cmapline','LineWidth',5)
+%H = sigstar({get(p(1,1,1).axis,'XLim')},min(min(alloutputs.erp.pt.stats{1}.prob)),0,18)
+%delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
 
 %FillBetween(t,nanmean(nanmean(allmeas{1}.nadderp.real(:,:,1,:),4),1)-...
 %    nanmean(nanmean(allmeas{1}.nadderp.pseudo(:,:,1,:),4),1),nanmean(nanmean(allmeas{2}.nadderp.real(:,:,2,:),4),1)-...
@@ -332,37 +369,43 @@ plotindx = linspace(0,max(settings.aucindex),5);
 plotindx(1) = [];
 plotindx = plotindx - settings.srate/10;
 for cc = 1:4
-    p(1,1,cc+1).select()
+    p(1,1,2,ceil(cc/2),cc-2*floor(cc/3)).select()
     plotdata = nanmean(squeeze(allmeas{1}.nadderp.diff(:,plotindx(cc),2,:)-allmeas{1}.nadderp.diff(:,plotindx(cc),1,:)),2);
     if strcmpi(settings.datatype,'MEG')
         ft_cluster_topoplot(settings.layout,plotdata,settings.datasetinfo.label,...
-            0.*alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)),0.*alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)));
+            ones(size(alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)))),alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)));
     else
         cluster_topoplot(plotdata,settings.layout,...
-            1-(0.*alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc))),0.*alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)));
+            ones(size(alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)))),alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)));
     end
     colormap(lkcmap2)
     if cc == 4
-        colorbar
+        cbars(1) = colorbar;
     end
-    ax(cc) = p(1,1,cc+1).axis;
+    ax(cc) = p(1,1,2,ceil(cc/2),cc-2*floor(cc/3)).axis;
     title([num2str(plotindx(cc)*(1000/settings.srate)) ' ms'],'FontSize',10)
     Set_Clim(ax(cc),[prctile(plotdata,20) prctile(plotdata,80)]);
 end
 Normalize_Clim(ax,1)
 
 
-p(1,2).pack();
-for cc = 1:4
-    p(1,2).pack({[0.25*(cc-1) 0 0.25 0.15]})
-end
+p(1,2).pack('h',{60 40});
+% for cc = 1:4
+%     p(1,2).pack({[0.25*(cc-1) 0 0.25 0.15]})
+% end
+p(1,2,2).pack(2,2)
 p(1,2,1).select();
 t = linspace(0,length(settings.real.poststim)*(1/settings.srate),length(settings.real.poststim));
 hold on
 stdshade(t,squeeze(nanmean(allmeas{1}.ttv.real,1)),'k',0.15,1,'sem')
+yl = get(gca,'YLim');
+set(gca,'YLim',[yl(1) yl(2)+0.08*diff(yl)]);
+clust_sigmasks(gca,alloutputs.erp.ttv.stats{1},1);
+set(gca,'YLim',[yl(1) yl(2)+0.08*diff(yl)]);
+
 %Plot_sigmask(gca,alloutputs.erp.ttv.stats{1}.mask,'cmapline','LineWidth',5)
-H = sigstar({get(p(1,2,1).axis,'XLim')},min(min(alloutputs.erp.ttv.stats{1}.prob)),0,18)
-delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
+%H = sigstar({get(p(1,2,1).axis,'XLim')},min(min(alloutputs.erp.ttv.stats{1}.prob)),0,18)
+%delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)])
 xlabel('Time (s)')
 
 ylabelunits(settings)
@@ -374,20 +417,20 @@ plotindx = linspace(0,max(settings.aucindex),5);
 plotindx(1) = [];
 plotindx = plotindx - settings.srate/10;
 for cc = 1:4
-    p(1,2,cc+1).select()
+    p(1,2,2,ceil(cc/2),cc-2*floor(cc/3)).select()
     plotdata = nanmean(allmeas{1}.ttv.real(:,plotindx(cc),:),3);
     if strcmpi(settings.datatype,'MEG')
         ft_cluster_topoplot(settings.layout,plotdata,settings.datasetinfo.label,...
-            0.*alloutputs.erp.ttv.stats{1}.mask(:,plotindx(cc)),0.*alloutputs.erp.ttv.stats{1}.mask(:,plotindx(cc)));
+            ones(size(alloutputs.erp.ttv.stats{1}.mask(:,plotindx(cc)))),alloutputs.erp.ttv.stats{1}.mask(:,plotindx(cc)));
     else
         cluster_topoplot(plotdata,settings.layout,...
-            1-(0.*alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc))),0.*alloutputs.erp.pt.stats{1}.mask(:,plotindx(cc)));
+            ones(size(alloutputs.erp.ttv.stats{1}.mask(:,plotindx(cc)))),alloutputs.erp.ttv.stats{1}.mask(:,plotindx(cc)));
     end
     colormap(lkcmap2)
     if cc == 4
-        colorbar
+        cbars(2) = colorbar;
     end
-    ax(cc) = p(1,2,cc+1).axis;
+    ax(cc) = p(1,2,2,ceil(cc/2),cc-2*floor(cc/3)).axis;
     title([num2str(plotindx(cc)*(1000/settings.srate)) ' ms'],'FontSize',10)
     Set_Clim(ax(cc),[prctile(plotdata,20) prctile(plotdata,80)]);
 end
@@ -400,7 +443,7 @@ nicecorrplot(nanmean(allmeas{1}.naerpindex,1),nanmean(allmeas{1}.ttvindex,1),{'P
 FixAxes(gca,16)
 title('Correlation of pseudotrial and TTV methods')
 p(2,2,2).select()
-plotdata = alloutputs.erp.corr.r(:,1);
+plotdata = real(alloutputs.erp.corr.r(:,1));
 if isempty(find(~isnan(plotdata)))
     plotdata = zeros(size(plotdata));
 end
@@ -413,13 +456,13 @@ else
         1-(0.*alloutputs.erp.corr.p(:,1)),alloutputs.erp.corr.stats{1}.mask);
 end
 Normalize_Clim(gca,1)
-colorbar('WestOutside')
+colorbar('EastOutside')
 
 
-p.margin = [20 20 5 8];
+p.margin = [20 20 20 8];
 p.de.margin = [5 5 5 5];
 p(1).marginright = 25;
-p(1,2).marginleft = 28;
+p(1,2).marginleft = 38;
 p(1).marginbottom = 32;
 
 colormap(lkcmap2)
@@ -427,10 +470,15 @@ colormap(lkcmap2)
 
 set(gcf,'Color','w')
 
+for c = 1:2
+       cbars(c).Position = [p(1,c,2).position(1)+p(1,c,2).position(3)+0.05*p(1,c,2).position(3) p(1,c,2).position(2)+0.25*p(1,c,2).position(4) ...
+        cbars(c).Position(3) 0.5*p(1,c,2).position(4)]; 
+end
+
 %set(gca,'FontSize',11,'TitleFontSizeMultiplier',1.1)
-savefig('Fig3.fig')
-export_fig('Fig3.png','-m5')
-save('Panel3.mat','p')
+savefig('Fig3_nohp.fig')
+export_fig('Fig3_nohp.png','-m5')
+save('Panel3_nohp.mat','p')
 close
 
 
@@ -494,9 +542,10 @@ Normalize_Ylim(ax1)
 
 for c = 1:settings_osci.nfreqs
     p(c,1).select();
+    clust_sigmasks(gca,compstats.erspdiff{c},0)
     %Plot_sigmask(p(c,1).axis,compstats.erspdiff{c}.prob < 0.05,'cmapline','LineWidth',5)
-    H = sigstar({get(p(c,1).axis,'XLim')},min(min(compstats.erspdiff{c}.prob)),0,18)
-    delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
+    %H = sigstar({get(p(c,1).axis,'XLim')},min(min(compstats.erspdiff{c}.prob)),0,18)
+    %delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
 end
 
 p(settings_osci.nfreqs,1).select()
@@ -891,7 +940,7 @@ for c = 1:settings_osci.nfreqs
     title(fbands{c})
     xlabel('Time (s)')
     if c ==1 
-    ylabel(['Magnitude of' newline 'spontaneous-evoked interaction (%)'])
+    ylabel(['Pseudotrial-corrected difference' newline '(prestim high - prestim low) (%)'])
     end
     %ylim = get(gca,'YLim');
     %line([0 0],ylim,'Color',[0.5 0.5 0.5],'LineWidth',2)
@@ -907,12 +956,16 @@ for c = 1:settings_osci.nfreqs
    ax1(c) = p(c,1).axis; 
 end
 Normalize_Ylim(ax1)
+yl = get(gca,'YLim');
+Set_Ylim(ax1,[yl(1) yl(2)+abs(diff(yl))*0.08])
+pause(0.5)
 
 for c = 1:settings_osci.nfreqs
     p(c,1).select();
+    clust_sigmasks(gca,compstats.ptdiff{c},1);
     %Plot_sigmask(p(c,1).axis,compstats.erspdiff{c}.prob < 0.05,'cmapline','LineWidth',5)
-    H = sigstar({get(p(c,1).axis,'XLim')},min(min(compstats.ptdiff{c}.prob)),0,18)
-    delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
+    %H = sigstar({get(p(c,1).axis,'XLim')},min(min(compstats.ptdiff{c}.prob)),0,18)
+    %delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
 end
 
 p(settings_osci.nfreqs,1).select()
@@ -922,9 +975,9 @@ p.margintop = 8;
 p.marginleft = 24;
 p.de.marginleft = 12;
 
-savefig('Fig6c_rev3.fig')
-export_fig('Fig6c_rev3.png','-m4')
-save('Panel6c_rev3.mat','p')
+savefig('Fig6c_oscifrac.fig')
+export_fig('Fig6c_oscifrac.png','-m4')
+save('Panel6c_oscifrac.mat','p')
 
 %% New figure S1: Osci and frac ersp
 
@@ -997,11 +1050,17 @@ Normalize_Ylim(gcf,0)
 for c = 1:settings_osci.nfreqs
     p(1,c).select();
     %Plot_sigmask(p(c,1).axis,compstats.erspdiff{c}.prob < 0.05,'cmapline','LineWidth',5)
-    H = sigstar({get(p(1,c).axis,'XLim')},min(min(osci_pt_diff_stats{c}.prob)),0,18)
-    delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
+    yl = get(gca,'YLim');
+    set(gca,'YLim',[yl(1) yl(2)+abs(diff(yl))*0.1]);
+    clust_sigmasks(gca,osci_pt_diff_stats{c},1)
+    %H = sigstar({get(p(1,c).axis,'XLim')},min(min(osci_pt_diff_stats{c}.prob)),0,18)
+    %delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
     p(2,c).select()
-    H = sigstar({get(p(2,c).axis,'XLim')},min(min(frac_pt_diff_stats{c}.prob)),0,18)
-    delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
+    yl = get(gca,'YLim');
+    set(gca,'YLim',[yl(1) yl(2)+abs(diff(yl))*0.1]);
+    clust_sigmasks(gca,frac_pt_diff_stats{c},1)
+    %H = sigstar({get(p(2,c).axis,'XLim')},min(min(frac_pt_diff_stats{c}.prob)),0,18)
+    %delete(H(1)); pos = get(H(2),'position'); yl = get(gca,'YLim'); set(H(2),'position',[pos(1) yl(2)-0.05*diff(yl) pos(3)]);
 end
 
 %p(settings_osci.nfreqs,1).select()
@@ -1011,7 +1070,7 @@ p.margintop = 8;
 p.marginleft = 18;
 p.de.marginleft = 12;
 
-savefig('FigS1_rev3.fig')
-export_fig('FigS1_rev3.png','-m4')
-save('PanelS1_rev3.mat','p')
+savefig('FigS1.fig')
+export_fig('FigS1.png','-m4')
+save('PanelS1.mat','p')
 

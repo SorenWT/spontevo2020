@@ -30,7 +30,16 @@ if nargin < 3
    labels = {'A','B'}; 
 end
 
+if mean(abs(a)) < 1e-6
+    sclfact = mean(abs(a));
+    a = a./sclfact;
+else
+    sclfact = 1;
+end
+
 B = regress(b,horzcat(ones(length(a),1),a));
+B(2) = B(2)./sclfact;
+a = a.*sclfact;
 
 if CheckInput(varargin,'Type')
     type = EasyParse(varargin,'Type');

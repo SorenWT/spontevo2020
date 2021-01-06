@@ -1,6 +1,6 @@
 function compstats = NA_compare_outputs(settings,allmeas1,allmeas2)
 
-opts.nrand = 1000;
+opts.nrand = 10000;
 opts.minnbchan = 1;
 opts.parpool = settings.pool;
 opts.eqinterval = [-2 2];
@@ -9,18 +9,45 @@ for c = 1:settings.nfreqs
     pt_diff_stats{c} = EasyClusterCorrect({permute(squeeze(allmeas1{c}.naddersp.diff(:,:,2,:)-allmeas1{c}.naddersp.diff(:,:,1,:)),[1 3 2]),...
         permute(squeeze(allmeas2{c}.naddersp.diff(:,:,2,:)-allmeas2{c}.naddersp.diff(:,:,1,:)),[1 3 2])},...
         settings.datasetinfo,'ft_statfun_fast_signrank',opts);
+    pt_diff_stats{c}.effsizetc = squeeze(mean(permute(squeeze(diff(allmeas1{c}.naddersp.diff(:,:,:,:),1,3)),[1 3 2])-permute(squeeze(diff(allmeas2{c}.naddersp.diff(:,:,:,:),1,3)),[1 3 2]),2)./...
+        std(permute(squeeze(diff(allmeas1{c}.naddersp.diff(:,:,:,:),1,3)),[1 3 2])-permute(squeeze(diff(allmeas2{c}.naddersp.diff(:,:,:,:),1,3)),[1 3 2]),[],2));
+    if length(pt_diff_stats{c}.posclusters) > 0
+        pt_diff_stats{c}.effsize_pos = sum(sum(pt_diff_stats{c}.effsizetc.*(pt_diff_stats{c}.posclusterslabelmat==1)))./...
+            sum(sum(pt_diff_stats{c}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+    end
+    if length(pt_diff_stats{c}.negclusters) > 0
+        pt_diff_stats{c}.effsize_neg = sum(sum(pt_diff_stats{c}.effsizetc.*(pt_diff_stats{c}.negclusterslabelmat==1)))./...
+            sum(sum(pt_diff_stats{c}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+    end
+    
     ttv_diff_stats{c} = EasyClusterCorrect({permute(allmeas1{c}.ttversp.real,[1 3 2]),permute(allmeas2{c}.ttversp.real,[1 3 2])},...
         settings.datasetinfo,'ft_statfun_fast_signrank',opts);
-
-    %pt_diff_stats{c} = EasyClusterCorrect({permute(squeeze(allmeas1{c}.naddersp.diff(:,:,2,:)-allmeas1{c}.naddersp.diff(:,:,1,:)),[1 3 2]),...
-    %    permute(squeeze(allmeas2{c}.naddersp.diff(:,:,2,:)-allmeas2{c}.naddersp.diff(:,:,1,:)),[1 3 2])},...
-    %    settings.datasetinfo,'ft_statfun_tost',opts);
-    %ttv_diff_stats{c} = EasyClusterCorrect({permute(allmeas1{c}.ttversp.real,[1 3 2]),permute(allmeas2{c}.ttversp.real,[1 3 2])},...
-    %    settings.datasetinfo,'ft_statfun_tost',opts);        
-
+    
+    ttv_diff_stats{c}.effsizetc = squeeze(mean(permute(allmeas1{c}.ttversp.real,[1 3 2])-permute(allmeas2{c}.ttversp.real,[1 3 2]),2)./...
+        std(permute(allmeas1{c}.ttversp.real,[1 3 2])-permute(allmeas2{c}.ttversp.real,[1 3 2]),[],2));
+    if length(ttv_diff_stats{c}.posclusters) > 0
+        ttv_diff_stats{c}.effsize_pos = sum(sum(ttv_diff_stats{c}.effsizetc.*(ttv_diff_stats{c}.posclusterslabelmat==1)))./...
+            sum(sum(ttv_diff_stats{c}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+    end
+    if length(ttv_diff_stats{c}.negclusters) > 0
+        ttv_diff_stats{c}.effsize_neg = sum(sum(ttv_diff_stats{c}.effsizetc.*(ttv_diff_stats{c}.negclusterslabelmat==1)))./...
+            sum(sum(ttv_diff_stats{c}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+    end
+  
 
     ersp_diff_stats{c} = EasyClusterCorrect({permute(allmeas1{c}.ersp.real,[1 3 2]) permute(allmeas2{c}.ersp.real,[1 3 2])},...
         settings.datasetinfo,'ft_statfun_fast_signrank',opts);
+    
+    ersp_diff_stats{c}.effsizetc = squeeze(mean(permute(allmeas1{c}.ersp.real,[1 3 2])-permute(allmeas2{c}.ersp.real,[1 3 2]),2)./...
+        std(permute(allmeas1{c}.ersp.real,[1 3 2])-permute(allmeas2{c}.ersp.real,[1 3 2]),[],2));
+    if length(ersp_diff_stats{c}.posclusters) > 0
+        ersp_diff_stats{c}.effsize_pos = sum(sum(ersp_diff_stats{c}.effsizetc.*(ersp_diff_stats{c}.posclusterslabelmat==1)))./...
+            sum(sum(ersp_diff_stats{c}.posclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+    end
+    if length(ersp_diff_stats{c}.negclusters) > 0
+        ersp_diff_stats{c}.effsize_neg = sum(sum(ersp_diff_stats{c}.effsizetc.*(ersp_diff_stats{c}.negclusterslabelmat==1)))./...
+            sum(sum(ersp_diff_stats{c}.negclusterslabelmat==1)); % mean effect size over all sensors in significant cluster
+    end
 end
 
 compstats.ptdiff = pt_diff_stats;
