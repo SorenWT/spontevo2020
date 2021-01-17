@@ -1,5 +1,32 @@
-% script to make allmeas and alloutputs for ERP stuff
+% script to make allmeas and alloutputs for ERP in different frequency
+% bands
 
+% First do the analyses
+load('settings_camcan_1Hz_200msprestim.mat');
+
+mainsettings = settings;
+
+settings.steps = {'tf_filter','results'}; settings.pool = [48 48];
+settings.tfparams.method = 'hilbert';
+settings = rmfield('alpha_pf'); settings.load_allmeas = 'no';
+
+
+bands = {[] [2 4] [4 8] [8 13] [13 30] [30 100] [100 200]};
+fbandnames = {'Broadband','Delta','Theta','Alpha','Beta','Low Gamma','High Gamma'};
+
+for i = 1:6
+   settings.tfparams.fbands = bands([1 i+1]);
+   settings.tfparams.fbandnames = fbandnames([1 i+1]);
+   lprestim = floor(1000/(2*max(settings.tfparams.fbands{2}))); % half a cycle of the highest frequency in the band, in ms
+   lprestim = floor(lprestim/2); % length in samples
+   settings.pseudo.prestim = mainsettings.pseudo.prestim((end-(lprestim-1)):end);
+   settings.real.prestim = mainsettings.real.prestim((end-(lprestim-1)):end);
+   settings.datasetname = ['camcan_1Hz_erpfbands_' fbandnames{i+1}];
+   NA_analysis(settings)
+end
+
+
+% Now combine the outputs structures into one larger structure
 load('camcan_1Hz_revision_allmeas.mat');
 mainmeas = allmeas;
 load('camcan_1Hz_revision_results.mat');
