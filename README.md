@@ -1,5 +1,5 @@
 This repository contains code required to reproduce the analyses in Wainio-Theberge et al. (2020): Bridging the gap – Spontaneous fluctuations shape stimulus-evoked spectral power.
-
+x
 To use the functions in this repository, the repository must be added to the MATLAB path with all subfolders. For MEG data, Fieldtrip must also be installed and set up; for EEG data, both EEGLAB and Fieldtrip are required. To do the preprocessing, MNE-Python must also be installed, as well as the Human Connectome Project's megconnectome software. You will also need to install the AutoReject package (https://github.com/autoreject/autoreject).
 
 ## Preprocessing
@@ -23,7 +23,7 @@ settings_camcan_IRASAtf_osci/frac.mat: settings for the oscillatory-fractal deco
 settings_wolff2019.mat: settings for the EEG replication dataset; reproduces figures 7 and 8. 
 
 
-To create the figures, find the appropriate figure type in NA_figures_script, load the appropriate settings, allmeas and results files, and run the code.
+To create the figures, find the appropriate figure type in NA_figures_script, load the appropriate settings, allmeas and results files, and run the code. To generate figure 5B (spontaneous-evoked correlation of fractal slope and intercept), use the script NAPLE_plot.m.
 
 ## Other scripts
 Other figures in the text use other functions. 
@@ -33,9 +33,6 @@ The analyses and visualization for the simulation results are performed using NA
 
 Randomly chosen remote pseudotrials (figures S8 and S9): 
 To reproduce this analysis, use the settings structure settings_camcan_remotepseudo.mat, but use the function NA_tf_camcan_randpseudo.m instead of NA_tf_func.m to do time-frequency analysis. Calculate results and plot figures as normal.
-
-Spontaneous-evoked correlation of fractal slope and intercept (figure S11):
-Use the script NAPLE_plot.m to carry out the analysis and generate the figure.
 
 Time-domain spontaneous-evoked correlation in different frequency bands (figure S14):
 Use NA_erpfbands.m to generate the allmeas and results structures. The figure is the same template as figure 2 in the main text, so use NA_figures_script.m to generate this.
