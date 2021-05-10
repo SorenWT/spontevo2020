@@ -1,5 +1,5 @@
-This repository contains code required to reproduce the analyses in Wainio-Theberge et al. (2020): Bridging the gap – Spontaneous fluctuations shape stimulus-evoked spectral power.
-x
+This repository contains code required to reproduce the analyses in Wainio-Theberge et al. (2021): Dynamic relationships between spontaneous and evoked electrophysiological activity.
+
 To use the functions in this repository, the repository must be added to the MATLAB path with all subfolders. For MEG data, Fieldtrip must also be installed and set up; for EEG data, both EEGLAB and Fieldtrip are required. To do the preprocessing, MNE-Python must also be installed, as well as the Human Connectome Project's megconnectome software. You will also need to install the AutoReject package (https://github.com/autoreject/autoreject).
 
 ## Preprocessing
